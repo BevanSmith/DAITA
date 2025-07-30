@@ -24,7 +24,7 @@ load_dotenv()
 
 # --- Step 1: Define the Agent State (Memory Blueprint) ---
 class AgentState(TypedDict):
-    df: Optional[pd.DataFrame]
+    df: Optional[pd.DataFrame]   #optional means can be whatever is inside the bracket or None.
     original_df: Optional[pd.DataFrame] # To preserve the raw original dataset
     file_name: Optional[str]
     messages: List[BaseMessage] # Conversation history for the LLM
@@ -75,15 +75,18 @@ def load_data_node(state: AgentState) -> AgentState:
     The file path is expected to be in the latest HumanMessage content.
     """
     messages = state.get("messages", [])
-    file_path = None
-    if messages and isinstance(messages[-1], HumanMessage):
+    file_path = None  ## Ensures 'file_path' exists in scope with a default 'None' value.
+    if messages and isinstance(messages[-1], HumanMessage):   #if messages exists and it is a HumanMessag; or rather, if the last message was human.
         # Assuming the file path is the content of the initial HumanMessage
-        file_path = messages[-1].content
+        file_path = messages[-1].content   #.content is the actual message; -1 is to extract the last message from the messages list.
     else:
         print("[❌] Error: No file path provided in the initial HumanMessage.")
         messages.append(AIMessage(content="Error: Please provide a file path to load."))
-        return {"df": None, "file_name": None, "messages": messages}
+        return {"df": None, "file_name": None, "messages": messages}  #the returns update the state; None because no file path to load.
 
+# the first if else statement checks if there is a message and if its human.  
+# the second if statement (below) says yes there was a message but checks if its empty
+# if not file_path means falsiness: if X is empty or None or zero or False. 
     if not file_path:
         print("[❌] Error: File path is empty.")
         messages.append(AIMessage(content="Error: File path cannot be empty."))
@@ -98,6 +101,15 @@ def load_data_node(state: AgentState) -> AgentState:
         print(f"[❌] Failed to load dataset: {e}")
         messages.append(AIMessage(content=f"Failed to load dataset from '{file_path}': {e}"))
         return {"df": None, "original_df": None, "file_name": None, "messages": messages}
+
+
+
+#so essentially, we load a user input filename in and it gets stored as humanmessages and is saved in the initial state.  
+# This initial state is fed into the app graph which feeds into the node (load data) that gets the message and checks if its message and human; 
+# if so it sets it as file_path; if not, it jumps out and returns None to the state.  If empty it jumps out and returns None to the state.  Then if we are
+#  still around in the code (so to speak) it tries to
+#  read csv the file path and proved a basic shape and append the AI message to the list and then return a bunch of df info.  If not then return None and exit.
+
 
 
 # --- Main execution block ---
@@ -124,6 +136,11 @@ if __name__ == "__main__":
 
     # Initial state for the graph invocation
     # The file path is passed as the content of the first HumanMessage
+
+    #bevan:  the user feeds int the file path and it gets added to the state or initial_state
+    # below.  then it is fed into the app (.invoke) which is the graph.  Then it goes to the 
+    #first node which is load data node and looks for "messages" in the state.  Does the
+    #state have messages?  and then is the last one (-1) a human message?  
     initial_state = {
         "messages": [HumanMessage(content=user_file_path)],
         "csv_saved_paths": [], # Initialize lists to empty
